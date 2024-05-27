@@ -15,7 +15,7 @@ import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { ref, reactive, toRaw, onMounted, onBeforeUnmount } from "vue";
 import { useTranslationLang } from "@/layout/hooks/useTranslationLang";
 import { useDataThemeChange } from "@/layout/hooks/useDataThemeChange";
-
+import { useImageCode } from "./hooks/useImageCode";
 import dayIcon from "@/assets/svg/day.svg?component";
 import darkIcon from "@/assets/svg/dark.svg?component";
 import globalization from "@/assets/svg/globalization.svg?component";
@@ -38,10 +38,11 @@ const { dataTheme, overallStyle, dataThemeChange } = useDataThemeChange();
 dataThemeChange(overallStyle.value);
 const { title, getDropdownItemStyle, getDropdownItemClass } = useNav();
 const { locale, translationCh, translationEn } = useTranslationLang();
-
+const { verifyId, imageCodeSrc, getVerifyIdCode } = useImageCode();
 const ruleForm = reactive({
-  username: "admin",
-  password: "admin123"
+  userCode: "tywl",
+  password: "Lisong@2015",
+  imageVerifyCode: ""
 });
 
 const onLogin = async (formEl: FormInstance | undefined) => {
@@ -50,7 +51,11 @@ const onLogin = async (formEl: FormInstance | undefined) => {
     if (valid) {
       loading.value = true;
       useUserStoreHook()
-        .loginByUsername({ username: ruleForm.username, password: "admin123" })
+        .loginByUsername({
+          userCode: ruleForm.userCode,
+          password: ruleForm.password,
+          verifyId: verifyId.value
+        })
         .then(res => {
           if (res.success) {
             // 获取后端路由
@@ -155,10 +160,10 @@ onBeforeUnmount(() => {
                     trigger: 'blur'
                   }
                 ]"
-                prop="username"
+                prop="userCode"
               >
                 <el-input
-                  v-model="ruleForm.username"
+                  v-model="ruleForm.userCode"
                   clearable
                   :placeholder="t('login.pureUsername')"
                   :prefix-icon="useRenderIcon(User)"
@@ -175,6 +180,24 @@ onBeforeUnmount(() => {
                   :placeholder="t('login.purePassword')"
                   :prefix-icon="useRenderIcon(Lock)"
                 />
+              </el-form-item>
+            </Motion>
+
+            <Motion :delay="150">
+              <el-form-item prop="imageVerifyCode">
+                <el-input
+                  v-model.trim="ruleForm.imageVerifyCode"
+                  :placeholder="t('login.pureImageCode')"
+                >
+                  <template #append>
+                    <img
+                      :src="imageCodeSrc"
+                      alt=""
+                      @click="getVerifyIdCode"
+                      class="w-20"
+                    />
+                  </template>
+                </el-input>
               </el-form-item>
             </Motion>
 

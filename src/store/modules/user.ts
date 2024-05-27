@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import * as crypto from '@/utils/cryptojs'
 import {
   type userType,
   store,
@@ -59,8 +60,11 @@ export const useUserStore = defineStore({
     },
     /** 登入 */
     async loginByUsername(data) {
+      const password = encodeURIComponent(
+            crypto.EncryptPkcs7(data.password, 'zhuyu&whh1234567')
+          )
       return new Promise<UserResult>((resolve, reject) => {
-        getLogin(data)
+        getLogin({...data, password})
           .then(data => {
             if (data?.success) setToken(data.data);
             resolve(data);

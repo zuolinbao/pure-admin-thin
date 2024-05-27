@@ -79,6 +79,7 @@ status:
 login:
   pureUsername: 账号
   purePassword: 密码
+  pureImageCode: 验证码
   pureLogin: 登录
   pureLoginSuccess: 登录成功
   pureLoginFail: 登录失败

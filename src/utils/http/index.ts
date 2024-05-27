@@ -13,10 +13,12 @@ import { stringify } from "qs";
 import NProgress from "../progress";
 import { getToken, formatToken } from "@/utils/auth";
 import { useUserStoreHook } from "@/store/modules/user";
+import * as crypto from '@/utils/cryptojs'
 
 // 相关配置请参考：www.axios-js.com/zh-cn/docs/#axios-request-config-1
 const defaultConfig: AxiosRequestConfig = {
   // 请求超时时间
+  baseURL: '/api',
   timeout: 10000,
   headers: {
     Accept: "application/json, text/plain, */*",
@@ -59,60 +61,112 @@ class PureHttp {
 
   /** 请求拦截 */
   private httpInterceptorsRequest(): void {
+    // PureHttp.axiosInstance.interceptors.request.use(
+    //   async (config: PureHttpRequestConfig): Promise<any> => {
+    //     // 开启进度条动画
+    //     NProgress.start();
+    //     // 优先判断post/get等方法是否传入回调，否则执行初始化设置等回调
+    //     if (typeof config.beforeRequestCallback === "function") {
+    //       config.beforeRequestCallback(config);
+    //       return config;
+    //     }
+    //     if (PureHttp.initConfig.beforeRequestCallback) {
+    //       PureHttp.initConfig.beforeRequestCallback(config);
+    //       return config;
+    //     }
+    //     /** 请求白名单，放置一些不需要`token`的接口（通过设置请求白名单，防止`token`过期后再请求造成的死循环问题） */
+    //     const whiteList = ["/refresh-token", "/login"];
+    //     return whiteList.some(url => config.url.endsWith(url))
+    //       ? config
+    //       : new Promise(resolve => {
+    //           const data = getToken();
+    //           if (data) {
+    //             const now = new Date().getTime();
+    //             const expired = parseInt(data.expires) - now <= 0;
+    //             if (expired) {
+    //               if (!PureHttp.isRefreshing) {
+    //                 PureHttp.isRefreshing = true;
+    //                 // token过期刷新
+    //                 useUserStoreHook()
+    //                   .handRefreshToken({ refreshToken: data.refreshToken })
+    //                   .then(res => {
+    //                     const token = res.data.accessToken;
+    //                     config.headers["Authorization"] = formatToken(token);
+    //                     PureHttp.requests.forEach(cb => cb(token));
+    //                     PureHttp.requests = [];
+    //                   })
+    //                   .finally(() => {
+    //                     PureHttp.isRefreshing = false;
+    //                   });
+    //               }
+    //               resolve(PureHttp.retryOriginalRequest(config));
+    //             } else {
+    //               config.headers["Authorization"] = formatToken(
+    //                 data.accessToken
+    //               );
+    //               resolve(config);
+    //             }
+    //           } else {
+    //             resolve(config);
+    //           }
+    //         });
+    //   },
+    //   error => {
+    //     return Promise.reject(error);
+    //   }
+    // );
     PureHttp.axiosInstance.interceptors.request.use(
-      async (config: PureHttpRequestConfig): Promise<any> => {
-        // 开启进度条动画
-        NProgress.start();
-        // 优先判断post/get等方法是否传入回调，否则执行初始化设置等回调
-        if (typeof config.beforeRequestCallback === "function") {
-          config.beforeRequestCallback(config);
-          return config;
+  function (req) {
+    // 防止参数被篡改，需要对参数加密
+    let key = [
+      '75',
+      '25',
+      '37',
+      '74',
+      '6e',
+      '6c',
+      '70',
+      '35',
+      '4e',
+      '69',
+      '30',
+      '70',
+      '76',
+      '4a',
+      '54',
+      '7a',
+    ]
+    key = crypto.hexToStr(key)
+    let param
+    if (req.method === 'get') {
+      param = req.url.split('?')[1]
+      if (!param) {
+        // 可能不在url里，在params参数里
+        const sdata = []
+        for (const attr in req.params) {
+          sdata.push(`${attr}=${req.params[attr]}`)
         }
-        if (PureHttp.initConfig.beforeRequestCallback) {
-          PureHttp.initConfig.beforeRequestCallback(config);
-          return config;
+        param = sdata.join('&')
+        if (param) {
+          req.params = {} // 将参数放到url上，不然特殊字符会被处理，后台不好解析
+          req.url += '?'.concat(param)
         }
-        /** 请求白名单，放置一些不需要`token`的接口（通过设置请求白名单，防止`token`过期后再请求造成的死循环问题） */
-        const whiteList = ["/refresh-token", "/login"];
-        return whiteList.some(url => config.url.endsWith(url))
-          ? config
-          : new Promise(resolve => {
-              const data = getToken();
-              if (data) {
-                const now = new Date().getTime();
-                const expired = parseInt(data.expires) - now <= 0;
-                if (expired) {
-                  if (!PureHttp.isRefreshing) {
-                    PureHttp.isRefreshing = true;
-                    // token过期刷新
-                    useUserStoreHook()
-                      .handRefreshToken({ refreshToken: data.refreshToken })
-                      .then(res => {
-                        const token = res.data.accessToken;
-                        config.headers["Authorization"] = formatToken(token);
-                        PureHttp.requests.forEach(cb => cb(token));
-                        PureHttp.requests = [];
-                      })
-                      .finally(() => {
-                        PureHttp.isRefreshing = false;
-                      });
-                  }
-                  resolve(PureHttp.retryOriginalRequest(config));
-                } else {
-                  config.headers["Authorization"] = formatToken(
-                    data.accessToken
-                  );
-                  resolve(config);
-                }
-              } else {
-                resolve(config);
-              }
-            });
-      },
-      error => {
-        return Promise.reject(error);
       }
-    );
+    } else if (req.method === 'post') {
+      param = JSON.stringify(req.data)
+    }
+    if (param) {
+      const encode = crypto.Encrypt(param, key)
+      req.headers.sign =
+        encode.length > 30 ? encode.substring(encode.length - 30, encode.length) : encode // 大于30位取最后30位
+    }
+    return req
+  },
+  function (err) {
+    // Message({ message: err, type: 'error' })
+    return Promise.reject(err)
+  }
+)
   }
 
   /** 响应拦截 */

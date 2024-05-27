@@ -24,7 +24,13 @@ export default ({ mode }: ConfigEnv): UserConfigExport => {
       port: VITE_PORT,
       host: "0.0.0.0",
       // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
-      proxy: {},
+      proxy: {
+        '/api': {
+          target: 'http://10.251.38.62:30048', // 测试线
+          changeOrigin: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        }
+      },
       // 预热文件以提前转换和缓存结果，降低启动期间的初始页面加载时长并防止转换瀑布
       warmup: {
         clientFiles: ["./index.html", "./src/{views,components}/*"]
@@ -44,7 +50,8 @@ export default ({ mode }: ConfigEnv): UserConfigExport => {
       chunkSizeWarningLimit: 4000,
       rollupOptions: {
         input: {
-          index: pathResolve("./index.html", import.meta.url)
+          index: pathResolve("./index.html", import.meta.url),
+          login: pathResolve("./login.html", import.meta.url)
         },
         // 静态资源分类打包
         output: {

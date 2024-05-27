@@ -32,12 +32,38 @@ export type RefreshTokenResult = {
   };
 };
 
+export type GetVerifyIdResult = {
+  uuid: string;
+  code: string;
+  message: string;
+  data: number
+}
+
+export type VerifyAndLoginUserResult = {
+  uuid: string;
+  code: string;
+  message: string;
+  data: string
+};
+
 /** 登录 */
-export const getLogin = (data?: object) => {
-  return http.request<UserResult>("post", "/login", { data });
+export const getLogin = (params?: object) => {
+  return http.request<UserResult>("post", "/verifyAndLoginUser", { params });
 };
 
 /** 刷新`token` */
 export const refreshTokenApi = (data?: object) => {
   return http.request<RefreshTokenResult>("post", "/refresh-token", { data });
 };
+
+/** 获取图形验证码1 */
+export const getVerifyId = (data?: object) => {
+  return http.request<GetVerifyIdResult>("get", "/verifyCode/getVerifyId", { data });
+};
+
+/** 获取图形验证码1 */
+export const getVerifyCode = (params?: object) => {
+  return http.request<Blob>("get", "/verifyCode/getVerifyCode", { params, responseType: 'blob' });
+};
+
+
